@@ -1,0 +1,118 @@
+!p.charsize=1.4;
+!p.charthick=3.5;
+!p.t=0;
+!x.thick=3.0
+!y.thick=3.0
+pi=3.1415926;
+
+noofcolors=50;
+loadct, 5, ncolors=noofcolors;
+colors=noofcolors-1-indgen(noofcolors)
+
+set_plot, "ps";
+device, filename="potential_decay_600.ps", /color, bits=8;
+
+
+
+
+deltax=0.2; 
+deltat=0.1;
+
+
+noofx=long(1500);
+noofoutputs=long(20);
+
+
+x=lindgen(noofx);
+x=(x-0.5*noofx)*deltax;
+t=lindgen(noofoutputs);
+wfoutputevery=400;
+t=t*deltat*wfoutputevery;
+
+nooflines=long(noofx*noofoutputs);
+noofcolumns=long(2);
+
+tab=dblarr(noofcolumns,nooflines);
+
+tab2=dblarr(noofcolumns,nooflines);
+realpot=complexarr(noofx,noofoutputs);
+orbital=complexarr(noofx,noofoutputs);
+
+
+
+
+
+filename= 'kohnshamorbital_decay_3000.dat';
+
+ openr, m, filename, /get_lun;
+ 
+
+ readf, m, tab;
+
+
+for k=long(0),noofoutputs-1 do begin
+for i=long(0),noofx-1 do begin
+ 
+  orbital(i,k)=complex(tab(0,k*noofx+i),tab(1,k*noofx+i));
+
+endfor
+endfor
+
+
+
+
+filename2= 'realpot_decay_3000.dat';
+
+ openr, l, filename2, /get_lun;
+
+ readf, l, tab2;
+
+
+
+for k=long(0),noofoutputs-1 do begin
+
+for i=long(0),noofx-1 do begin
+
+  realpot(i,k)=complex(tab2(0,k*noofx+i),tab2(1,k*noofx+i));
+
+endfor
+
+endfor
+
+
+
+
+for k=long(0),noofoutputs-1 do begin
+
+  ;plot,x,orbital(*,k),xtitle="X (a.u)" ,ytitle="Orbital",xrange=[-30,30],yrange=[-0.3,0.75] 
+
+	
+  ;plot,x,realpot(*,k),xtitle="X (a.u)" ,ytitle="Potential",xrange=[-30,30],yrange=[-0.3,0.75]
+  
+  
+  
+
+  plot,x,orbital(*,k),xtitle="X (a.u)" ,ytitle="Orbital and Potential",xrange=[-30,30],yrange=[-0.2,0.75]
+
+	
+  plot,x,realpot(*,k),color=20,/noerase ,xrange=[-30,30],xstyle=4,ystyle=4 ;;,yrange=[-0.3,0.75]
+  
+  
+
+
+
+
+
+
+
+endfor
+
+ close, /all
+
+
+device, /close;
+
+
+
+set_plot, "x";
+end

@@ -1,0 +1,1308 @@
+
+#include<TDSE.h>
+#include<wavefunction.h>
+#include<fluid.h>
+#include<grid.h>
+#include<hamop.h>
+
+#define pi 3.1415926
+double alphahat;
+double frequref;
+int main(int argc, char **argv)
+{
+  int me=0;
+
+
+
+  FILE *file_wfdat,*file_alpha,*file_ionized,*file_wfautodat,*file_wfauto2dat;
+  FILE *file_realdftpotdat,*file_densityapprox;
+  FILE *file_realpot,*file_realpotnophase,*file_tddftpot, *file_kohnshamorbital, *file_wfdftexact,*file_wfdftexactnophase,*file_wfdftapprox;
+  FILE *file_obser, *file_obser_imag,*file_alphapart,*file_justalpha;
+  FILE *file_reading,*file_reading2,*file_readingheliumplus,*file_wfatgpoi,*file_justalphax;
+ 
+  
+  // *** create some files with appropriate appendices
+  
+  char string_wfdat[]=       "/data/vk060/wf_heliumlaser.dat";
+    char string_densityapprox[]=       "/data/vk060/densityapprox_heliumlaser.dat";
+    char string_justalpha[]=        "/data/vk060/justalpha_heliumlaser.dat";
+   char string_justalphax[]=        "/data/vk060/justalphax_heliumlaser.dat";
+  char string_realpot[]=        "/data/vk060/realpot_heliumlaser.dat";
+   char string_realpotnophase[]=        "/data/vk060/realpotnophase_heliumlaser.dat";
+  char string_alphapart[]=        "/data/vk060/alphapart_heliumlaser.dat";
+  char string_kohnshamorbital[]=       "/data/vk060/kohnshamorbital_heliumlaser.dat";
+  char string_wfdftexact[]=       "/data/vk060/wfdftexact_heliumlaser.dat";
+   char string_wfdftexactnophase[]=       "/data/vk060/wfdftexactnophase_heliumlaser.dat";
+  char string_wfatgpoi[]=   "/data/vk060/wfatgpoi_heliumlaser.dat";
+  char string_wfdftapprox[]=       "/data/vk060/wfdftapprox_heliumlaser.dat";
+  char string_obser[]=       "/data/vk060/observ_heliumlaser.dat";
+  char string_obser_imag[]=  "/data/vk060/observimag_heliumlaser.dat";
+  char string_tddftpot[]=        "/data/vk060/tddftpot_heliumlaser.dat";
+ char string_ionized[]=       "/data/vk060/ionized_heliumlaser.dat";
+  char string_alpha[]=    "/data/vk060/noalphapart_heliumlaser.dat";
+  char string_reading[]=     "/data/vk060/wf_1000.dat";
+  char string_reading2[]=     "/data/vk060/wfdftapprox_800.dat";
+
+   char string_readingheliumplus[]= "/data/vk060/heliumplusground_2000.dat"; 
+ char string_wfautodat[]=       "/data/vk060/wfauto_heliumlaser.dat";
+ char string_realdftpotdat[]=       "/data/vk060/realdftpotauto_heliumlaser.dat";
+  char string_wfauto2dat[]=       "/data/vk060/wfauto2_heliumlaser.dat";
+ file_realdftpotdat = fopen(string_realdftpotdat,"w");
+ file_wfautodat = fopen(string_wfautodat,"w");
+  file_wfauto2dat = fopen(string_wfauto2dat,"w");
+ 
+  file_alphapart = fopen(string_alphapart,"w");
+ file_alpha = fopen(string_alpha,"w");
+  file_justalphax = fopen(string_justalphax,"w");
+file_ionized = fopen(string_ionized,"w");
+ file_wfatgpoi = fopen(string_wfatgpoi,"w");
+  file_wfdat = fopen(string_wfdat,"w");
+  
+    
+    
+    file_densityapprox = fopen(string_densityapprox,"w");
+     file_justalpha = fopen(string_justalpha,"w");
+ file_wfdftapprox = fopen(string_wfdftapprox,"w");
+  file_wfdftexact = fopen(string_wfdftexact,"w");
+    file_wfdftexactnophase = fopen(string_wfdftexactnophase,"w");
+  file_realpot = fopen(string_realpot,"w");
+   file_realpotnophase = fopen(string_realpotnophase,"w");
+  file_kohnshamorbital = fopen(string_kohnshamorbital,"w");
+  file_obser = fopen(string_obser,"w");
+  file_obser_imag = fopen(string_obser_imag,"w");
+   file_reading = fopen(string_reading,"r");
+file_reading2 = fopen(string_reading2,"r");
+    file_tddftpot = fopen(string_tddftpot,"w");
+  
+
+file_readingheliumplus = fopen(string_readingheliumplus,"r");
+
+   long index, rrindex, xindex, yindex,zindex,index2;
+ complex<double> imagi(0.0,1.0);
+  double deltx=0.2;
+double delty=0.2;
+double deltz=1;
+  long ngpsx=2500;
+long ngpsy=2500;
+    long ngpsz=1;
+
+
+  // *** declare grid ***
+  grid g;
+  g.set_dim(16);            // propagation mode is 3 for xy cartesian
+  g.set_ngps(ngpsx,ngpsy,ngpsz);    // N_x, N_y, 1 was 100,100,1
+  g.set_delt(deltx,delty,deltz);  // delta_x, delta_y, deltz was 0.1,0.1,0.1
+  g.set_offs(ngpsx/2,ngpsy/2,0);    // origin  (usually at N_x/2, N_y/2,N_z/2)
+  
+  // *** declare smaller grid for reading***
+  grid g_small;
+  g_small.set_dim(16);
+  g_small.set_ngps(1000,1000,ngpsz);
+  g_small.set_delt(deltx,delty,deltz);
+  g_small.set_offs(500,500,0);
+  
+   
+
+
+
+
+  // *** declare smaller grid 2 for reading***
+  grid g_small2;
+  g_small2.set_dim(16);
+  g_small2.set_ngps(2000,2000,ngpsz);
+  g_small2.set_delt(deltx,delty,deltz);
+  g_small2.set_offs(1000,1000,0);
+
+
+
+   
+  // *** declare smaller grid 3 for reading***
+  grid g_small3;
+  g_small3.set_dim(16);
+  g_small3.set_ngps(400,400,ngpsz);
+  g_small3.set_delt(deltx,delty,deltz);
+  g_small3.set_offs(200,200,0);
+
+
+   // *** declare grid for 1D ***
+  grid gone;
+  gone.set_dim(15);
+  gone.set_ngps(ngpsx,1,1);
+  gone.set_delt(deltx,1,1);
+  gone.set_offs(ngpsx/2,0,0);
+  
+  // *** declare grid for 1D ***
+  grid gtwo;
+  gtwo.set_dim(15);
+  gtwo.set_ngps(ngpsx,1,1);
+  gtwo.set_delt(deltx,1,1);
+  gtwo.set_offs(ngpsx/2,0,0);  
+  
+    // *** declare smaler grid for 1D ***
+  grid gone_small;
+  gone_small.set_dim(15);
+  gone_small.set_ngps(200,1,1);
+  gone_small.set_delt(deltx,1,1);
+  gone_small.set_offs(100,0,0);
+  
+   
+  
+    // *** declare smaler grid for 1D ***
+  grid gone_small2;
+  gone_small2.set_dim(15);
+  gone_small2.set_ngps(2000,1,1);
+  gone_small2.set_delt(deltx,1,1);
+  gone_small2.set_offs(1000,0,0);
+  
+ 
+  
+  
+  // *** declare rest of variables ***
+  double imag_timestep=0.5;
+  double real_timestep=0.05;
+  long   no_of_imag_timesteps=200;
+  long   no_of_real_timesteps=38000;
+  int    obs_output_every=1;
+  long   wf_output_every=550; 
+  int    dumpingstepwidth=1;
+  int    vecpotflag=1;   // don't touch this
+  int    box=50;          //was 50
+  double masses[]={1.0,1.0};    // don't touch this
+  double charge=0.0;    // don't touch this
+  double epsilon=0.00001;
+  hamop interactionhamil(gone,vecpot_x,vecpot_y,vecpot_z,interactionpotxy,scalarpotytwo,scalarpotztwo,interactionpotxy,imagpotxtwo,imagpotytwo,field,dftpot);
+  hamop hamilton(g,vecpot_x,vecpot_y,vecpot_z,scalarpotx,scalarpoty,scalarpotz,interactionpotxy,imagpotx,imagpoty,field,dftpot);
+ 
+ 
+ 
+ 
+ hamop hamiltontwo(gone,vecpot_x,vecpot_y,vecpot_z,scalarpotxtwo,scalarpotytwo,scalarpotztwo,interactionpotxytwo,imagpotxtwo,imagpotytwo,field,dftpot);
+ hamop hamiltonone(gone,vecpot_x,vecpot_y,vecpot_z,scalarpotxtwo,scalarpotytwo,scalarpotztwo,interactionpotxytwo,imagpotxtwo,imagpotytwo,field,dftpot);
+  wavefunction wfinidft(gtwo.ngps_x()*gtwo.ngps_y()*gtwo.ngps_z());
+   wavefunction wfinidftnophase(gtwo.ngps_x()*gtwo.ngps_y()*gtwo.ngps_z());
+  wavefunction wf(g.ngps_x()*g.ngps_y()*g.ngps_z());
+   wavefunction wfex(g.ngps_x()*g.ngps_y()*g.ngps_z());
+   wavefunction wfex2(g.ngps_x()*g.ngps_y()*g.ngps_z());
+  
+                  wavefunction wfheliumplus(gone.ngps_x()*gone.ngps_y()*gone.ngps_z());
+                
+   wavefunction wfground(g.ngps_x()*g.ngps_y()*g.ngps_z());
+wavefunction wfread(g.ngps_x()*g.ngps_y()*g.ngps_z());
+wavefunction autowf2(g.ngps_x()*g.ngps_y()*g.ngps_z());
+
+
+wavefunction wfdftapproxread(gone.ngps_x()*gone.ngps_y()*gone.ngps_z());
+  wavefunction wfeverythingevendft(gone.ngps_x()*gone.ngps_y()*gone.ngps_z());
+  wavefunction wfeverythingodddft(gone.ngps_x()*gone.ngps_y()*gone.ngps_z());
+ wavefunction wfplane(gone.ngps_x()*gone.ngps_y()*gone.ngps_z());
+   wavefunction wfdftapprox(gone.ngps_x()*gone.ngps_y()*gone.ngps_z());
+    wavefunction wfdftapprox_old(gone.ngps_x()*gone.ngps_y()*gone.ngps_z());
+  wavefunction lowerimag(gone.ngps_x()*gone.ngps_y()*gone.ngps_z());
+  wavefunction upper(gone.ngps_x()*gone.ngps_y()*gone.ngps_z());
+  wavefunction lower(gone.ngps_x()*gone.ngps_y()*gone.ngps_z());
+    wavefunction lowerimagnophase(gone.ngps_x()*gone.ngps_y()*gone.ngps_z());
+  wavefunction uppernophase(gone.ngps_x()*gone.ngps_y()*gone.ngps_z());
+  wavefunction lowernophase(gone.ngps_x()*gone.ngps_y()*gone.ngps_z());
+  wavefunction potential(gone.ngps_x()*gone.ngps_y()*gone.ngps_z());
+  wavefunction realpot(gone.ngps_x()*gone.ngps_y()*gone.ngps_z());
+   wavefunction realpotclip(gone.ngps_x()*gone.ngps_y()*gone.ngps_z());
+    wavefunction realpotnophase(gone.ngps_x()*gone.ngps_y()*gone.ngps_z());
+      wavefunction realpotnophaseclip(gone.ngps_x()*gone.ngps_y()*gone.ngps_z());
+  wavefunction wfdftexact(gone.ngps_x()*gone.ngps_y()*gone.ngps_z());
+   wavefunction wfdftexactnophase(gone.ngps_x()*gone.ngps_y()*gone.ngps_z());
+   wavefunction wfini(g.ngps_x()*g.ngps_y()*g.ngps_z());
+  wavefunction wfeverythingeven(g.ngps_x()*g.ngps_y()*g.ngps_z());
+  wavefunction wfeverythingodd(g.ngps_x()*g.ngps_y()*g.ngps_z());
+  wavefunction wfeverythingevendftapprox(gone.ngps_x()*gone.ngps_y()*gone.ngps_z());
+  wavefunction wfeverythingodddftapprox(gone.ngps_x()*gone.ngps_y()*gone.ngps_z());
+    wavefunction correlation(g.ngps_x()*g.ngps_y()*g.ngps_z()) ;
+  wavefunction correlationex(g.ngps_x()*g.ngps_y()*g.ngps_z()) ;
+     wavefunction wfinidftapprox(gone.ngps_x()*gone.ngps_y()*gone.ngps_z());
+ wavefunction correlationdft(gone.ngps_x()*gone.ngps_y()*gone.ngps_z()) ;
+ wavefunction alphanew(gone.ngps_x()*gone.ngps_y()*gone.ngps_z());
+ wavefunction alphadiff(gone.ngps_x()*gone.ngps_y()*gone.ngps_z());
+ wavefunction alphaold(gone.ngps_x()*gone.ngps_y()*gone.ngps_z());
+  wavefunction noalphadiff(gone.ngps_x()*gone.ngps_y()*gone.ngps_z());
+  
+ wavefunction justalpha(gone.ngps_x()*gone.ngps_y()*gone.ngps_z());
+    wavefunction justalphax(gone.ngps_x()*gone.ngps_y()*gone.ngps_z());
+  wavefunction correlationexdft(gone.ngps_x()*gone.ngps_y()*gone.ngps_z()) ;
+  
+  wavefunction kohnshamdensity(gone.ngps_x()*gone.ngps_y()*gone.ngps_z()) ;
+  wavefunction kohnshamdensitynophase(gone.ngps_x()*gone.ngps_y()*gone.ngps_z()) ;
+  wavefunction densityapprox(gone.ngps_x()*gone.ngps_y()*gone.ngps_z()) ;
+  wavefunction kohnshamorbital(gone.ngps_x()*gone.ngps_y()*gone.ngps_z()) ;
+   wavefunction kohnshamorbitalnophase(gone.ngps_x()*gone.ngps_y()*gone.ngps_z()) ;
+  wavefunction kohnshamrealdensity(gone.ngps_x()*gone.ngps_y()*gone.ngps_z()) ;
+   wavefunction kohnshamrealdensitynophase(gone.ngps_x()*gone.ngps_y()*gone.ngps_z()) ;
+ wavefunction frackohnshamdensity(gone.ngps_x()*gone.ngps_y()*gone.ngps_z()) ;
+  wavefunction fracdensityapprox(gone.ngps_x()*gone.ngps_y()*gone.ngps_z()) ;
+  wavefunction frackohnshamorbital(gone.ngps_x()*gone.ngps_y()*gone.ngps_z()) ;
+  wavefunction frackohnshamrealdensity(gone.ngps_x()*gone.ngps_y()*gone.ngps_z()) ;
+  wavefunction frackohnshampotential(gone.ngps_x()*gone.ngps_y()*gone.ngps_z()) ;
+ wavefunction correlationdftapprox(gone.ngps_x()*gone.ngps_y()*gone.ngps_z()) ;
+  wavefunction correlationexdftapprox(gone.ngps_x()*gone.ngps_y()*gone.ngps_z()) ;
+ wavefunction alpha(gone.ngps_x()*gone.ngps_y()*gone.ngps_z()) ;
+ wavefunction alphax(gone.ngps_x()*gone.ngps_y()*gone.ngps_z()) ;
+double posofinteresty=2;
+ double posofinterestx=3;
+  //  double posofinterest=2;
+  double posofinterestKHx,posofinterestKHy;
+
+  long gpKHx,gplabx,gpKHy,gplaby;
+
+  
+long noofalphas=1;
+  double deltaalpha=0.02;
+  double alphanull=0.12;
+  
+ long alphacounter;
+  
+  long nooffrequs=1;
+  double deltafrequ=0.005;
+  double frequnull=1.35638;
+  long frequcounter;
+
+
+  long nooftargetenergs=2;
+  double deltatargetenergs=0.002;
+  double targetenergnull=-0.881875;
+  long targetenergcounter;
+  double targetenergy;
+
+  wavefunction wfdftpot(gone.ngps_x()*gone.ngps_y()*gone.ngps_z());
+ grid g_auto;
+  g_auto.set_dim(3);
+  g_auto.set_ngps(ngpsx,ngpsy,nooftargetenergs); // <== z runs over the energies of interest 
+  g_auto.set_delt(deltx,delty,1.0);
+  g_auto.set_offs(ngpsx/2,ngpsy/2,0);
+   wavefunction dftpot(g_auto.ngps_x()*g_auto.ngps_y()*g_auto.ngps_z());
+  wavefunction autowf(g_auto.ngps_x()*g_auto.ngps_y()*g_auto.ngps_z());
+  wavefunction realdftpot(gone.ngps_x()*gone.ngps_y()*gone.ngps_z());
+  complex<double> timestep;
+  double time=0.0;
+  
+  long counter_i=0;
+  long counter_ii=0;
+ 
+
+  
+  
+  // initialization
+  long outputofinterest=0;
+  
+  
+//wf.init(g,1,2.0,0.0,0.0);
+      // ground
+    wfread.init(g_small,99,0.1,0.0,0.0,file_reading,outputofinterest);
+    wf.nullify();
+    wf.regrid(g,g_small,wfread);
+    wf*=1.0/sqrt(wf.norm(g));
+   wfground=wf;
+ 
+    wfread.init(gone_small2,99,0.1,0.0,0.0,file_readingheliumplus,outputofinterest);
+    wf.nullify();
+    wf.regrid(gone,gone_small2,wfread);
+    wf*=1.0/sqrt(wf.norm(gone));
+
+    wfheliumplus=wf;
+    
+    wf.init(gone,10,2.0,0.0,0.0);
+     wf*=1.0/sqrt(wf.norm(gone));
+    wfplane=wf;
+    
+ wfdftapproxread.init(gone_small,99,0.1,0.0,0.0,file_reading2,outputofinterest);
+     wfdftapprox.nullify();
+     wfdftapprox.regrid(gone,gone_small,wfdftapproxread);
+    wfdftapprox*=1.0/sqrt(wfdftapprox.norm(gone));
+
+  
+     
+ wfeverythingeven.init(g,4,1.0,0.0,0.0);
+  wfeverythingeven*=1.0/sqrt(wfeverythingeven.norm(g));
+
+  wfeverythingodd.init(g,5,1.0,0.0,0.0);
+   wfeverythingodd*=1.0/sqrt(wfeverythingodd.norm(g));
+
+
+ wfeverythingevendft.init(gtwo,4,1.0,0.0,0.0);
+  wfeverythingevendft*=1.0/sqrt(wfeverythingevendft.norm(gtwo));
+
+  wfeverythingodddft.init(gtwo,6,1.0,0.0,0.0);
+   wfeverythingodddft*=1.0/sqrt(wfeverythingodddft.norm(gtwo));
+  
+
+ wfeverythingevendftapprox.init(gone,4,1.0,0.0,0.0);
+  wfeverythingevendftapprox*=1.0/sqrt(wfeverythingevendftapprox.norm(gone));
+
+  wfeverythingodddftapprox.init(gone,6,1.0,0.0,0.0);
+   wfeverythingodddftapprox*=1.0/sqrt(wfeverythingodddftapprox.norm(gone));
+  
+ wf=wfground;
+
+   fclose(file_reading);
+
+  cout << "norm wf    : " << wf.norm(g) <<  "\n";
+
+  
+
+  wavefunction staticpot_x(g.ngps_x());
+  staticpot_x.calculate_fixed_potential_array_x(g,hamilton,0.0,me);
+  
+  wavefunction staticpot_y(g.ngps_y());
+  staticpot_y.calculate_fixed_potential_array_y(g,hamilton,0.0,me);
+  
+  
+  
+  wavefunction staticpot(g.ngps_x()*g.ngps_y()*g.ngps_z());
+  staticpot.calculate_fixed_potential_array(g,hamilton,0.0,me);
+   
+
+  
+
+  
+     wavefunction staticpot_xy(g.ngps_z()*g.ngps_y()*g.ngps_x());
+  staticpot_xy.calculate_fixed_potential_array_xy(g,hamilton,0.0,me);
+  
+  wavefunction staticpotdft(gtwo.ngps_x()*gtwo.ngps_y()*gtwo.ngps_z());
+  staticpotdft.calculate_fixed_potential_array(gtwo,hamiltontwo,0.0,me);
+
+  wavefunction pot(gtwo.ngps_x()*gtwo.ngps_y()*gtwo.ngps_z());
+  pot.nullify();
+ wavefunction tddftpot(gone.ngps_x()*gone.ngps_y()*gone.ngps_z());
+ wavefunction tddftpot_old(gone.ngps_x()*gone.ngps_y()*gone.ngps_z());
+ wavefunction tddftpotactual(gone.ngps_x()*gone.ngps_y()*gone.ngps_z());
+
+ complex<double> dftapproxenerg;
+ complex<double> complenerg,complenerg0,dftenerg;
+  complex<double> groundstatepop, excitedstatepop,excitedstate1dpop,groundstatepopdft;
+ complex<double> KHnorm;
+  complex<double> complenergex;
+  complex<double>correlationint,correlationexint,correlationdftint,correlationexdftint;
+  complex<double>correlationdftapproxint,correlationexdftapproxint;
+    // ************* imag timeprop
+  long ts;
+  long no_of_timesteps=no_of_imag_timesteps;
+  for (ts=0; ts<no_of_timesteps; ts++)
+    {   
+                                                                                  
+      cout << "Imag: " << ts <<"  "  <<  " wf  "  << real(complenerg0)  <<  endl; 
+           cout<< real(dftapproxenerg) << endl;
+      counter_i++;
+      counter_ii++;
+      timestep=complex<double>(0.0*real_timestep,-1.0*imag_timestep);  
+      time=-imag(timestep*(complex<double>)(ts));
+      
+      // and now the actual propagation
+ 
+     wf.propagate(timestep,0.0,g,hamilton,me,vecpotflag,staticpot_x,staticpot_y,staticpot_xy,charge);
+       wf*=1.0/sqrt(wf.norm(g));
+
+  
+     
+           
+ frackohnshamdensity=wf.denskohnsham(g);
+	frackohnshamrealdensity=frackohnshamdensity.fracdenskohnshamcorrector(gone,wfheliumplus,epsilon);
+	frackohnshamorbital=frackohnshamrealdensity.fracphasekohnshamorbital(gone,epsilon);
+  frackohnshampotential=frackohnshamorbital.simplepotential(gone);
+   
+   tddftpot.calc_hartree_electronic(gone,gone,interactionhamil,wfdftapprox);
+
+      wfdftapprox.propagatedft(timestep,0.0,gone,hamiltonone,me,vecpotflag,staticpotdft,tddftpot,charge);
+
+      wfdftapprox*=1.0/sqrt(wfdftapprox.norm(gone));
+  dftapproxenerg=wfdftapprox.energydft(0.0,gone,hamiltonone,me,masses,staticpotdft,0.5*tddftpot,charge);
+      
+      
+
+      
+      if (counter_ii==obs_output_every)
+      	{
+			 complenerg0=wf.energy(0.0,g,hamilton,me,masses,staticpot_x,staticpot_y,staticpot_xy,charge);
+			 
+ 	 
+	  
+	  	  fprintf(file_obser_imag,"%li %.14le %.14le %.14le %.14le %.14le %.14le %.14le %.14le\n",
+			  ts,real(complenerg),imag(complenerg),wf.norm(g),wf.non_ionized(g,box),wf.sing_ionized(g,box),wf.doub_ionized(g,box),wf.expect_x(g),wf.expect_y(g));
+	  counter_ii=0;
+	 
+	};
+      
+    };
+  
+  
+  fclose(file_obser_imag);
+  
+  
+    kohnshamorbital=wf.dens1d(g);
+  kohnshamorbitalnophase=wf.dens1d(g);
+  
+ wfdftexact=kohnshamorbital;
+ wfdftexactnophase=kohnshamorbitalnophase;
+  
+ wfini=wf;
+ wfinidft=wfdftexact;
+wfinidftapprox=wfdftapprox;
+wfinidftnophase=wfdftexactnophase;
+
+  
+ 
+  wf.dump_to_file(g,file_wfdat,dumpingstepwidth);
+
+  wfdftapprox.dump_to_file(gone,file_wfdftapprox,dumpingstepwidth);
+
+  kohnshamorbital.dump_to_file(gone,file_kohnshamorbital,dumpingstepwidth);
+
+
+  complenerg=wf.energy(0.0,g,hamilton,me,masses,staticpot_x,staticpot_y,staticpot_xy,charge);
+ 	 
+       
+      
+//realdftpot=wf.Static_KS(g);  
+ frackohnshampotential.dump_to_file(gone,file_realdftpotdat,dumpingstepwidth);
+ 
+
+    for (alphacounter=0; alphacounter<noofalphas; alphacounter++)
+   {
+   for (frequcounter=0; frequcounter<nooffrequs; frequcounter++)
+   {
+    
+      counter_i=0;
+      counter_ii=0;
+      alphahat=alphacounter*deltaalpha+alphanull;
+ 
+      frequref=frequcounter*deltafrequ+frequnull;
+   
+      wf=wfini;
+      wfdftexact=wfinidft;
+      wfdftapprox=wfinidftapprox;
+        wfdftexactnophase=wfinidftnophase;
+  autowf.nullify();
+ autowf2.nullify();
+  // ************* real timeprop
+  
+           
+  timestep=complex<double>(real_timestep,0.0);
+  
+  no_of_timesteps=no_of_real_timesteps;
+  
+  
+ 
+
+
+
+  for (ts=0; ts<no_of_timesteps; ts++)
+    {
+      counter_i++;
+      counter_ii++;
+      time=real(timestep*(complex<double>)(ts));
+        cout << "Real: " << ts << " alphahat: " << alphahat <<  " frequ: " << frequref << "  "  << " norm wf : " << wf.norm(g) << "  "  <<  " wfdftexact  "  << wfdftexact.norm(gone) << "  "  <<  " wfdftexactnophase  "  << wfdftexactnophase.norm(gone) << "\n";
+    
+if(ts>=no_of_timesteps-1)
+    {
+      wf=wfini;
+      wfdftexact=wfinidft;
+      wfdftexactnophase=wfinidftnophase;
+      wfdftapprox=wfinidftapprox;
+    };
+
+alphaold=wf.alpha1d(g);
+      wf.propagate(timestep,time+0.5*real(timestep),g,hamilton,me,vecpotflag,staticpot_x,staticpot_y,staticpot_xy,charge);   
+ // wf*=1.0/sqrt(wf.norm(g));
+ 
+ alphanew=wf.alpha1d(g);
+  
+  
+  alphadiff=alphanew.timederivalpha(gone,alphaold,kohnshamrealdensity,real(timestep));//N.M potential calculation of complete expression
+   noalphadiff=alphanew.notimederivalpha(gone,alphaold,kohnshamrealdensity,real(timestep));//N.M potential calculation after neglecting the time derivative of alpha
+  justalpha=alphanew.justalpha(gone,alphaold,kohnshamrealdensity,real(timestep));//N.M potential but only calculating the alpha part
+  justalphax=alphanew.justalphax(gone,alphaold,kohnshamrealdensity,real(timestep));//N.M potential but only calculating the x derivative of alpha part
+  wfdftapprox_old=wfdftapprox;
+    
+    
+     
+//    Calculating approximate DFT stuff
+      tddftpot_old.calc_hartree_electronic(gone,gone,interactionhamil,wfdftapprox_old);
+     
+
+      wfdftapprox.propagatedft(timestep,time+0.5*real(timestep),gone,hamiltonone,me,vecpotflag,staticpotdft,tddftpot_old,charge);
+     
+
+      tddftpot.calc_hartree_electronic(gone,gone,interactionhamil,wfdftapprox);
+     
+      wfdftapprox=wfdftapprox_old;
+     
+      wfdftapprox.propagatedft(timestep,time+0.5*real(timestep),gone,hamiltonone,me,vecpotflag,staticpotdft,0.5*(tddftpot+tddftpot_old),charge);
+      
+     densityapprox=wfdftapprox.approxdenscorector(gone,g,wfheliumplus,wf);
+	
+	
+	//    Calculating exact DFT stuff
+      lowerimag=kohnshamorbital;
+      
+kohnshamdensity=wf.denskohnsham(g);
+	kohnshamrealdensity=kohnshamdensity.denskohnshamcorrector(gone,g,wfheliumplus,wf);
+	kohnshamorbital=kohnshamrealdensity.phasekohnshamorbital(gone,g,wf,box);
+ tddftpotactual.calc_hartree_electronic(gone,gone,interactionhamil,kohnshamorbital);
+
+      upper=kohnshamorbital;
+      lower=lowerimag;
+
+      upper.propagatedft(-0.5*timestep,time+0.5*real(timestep),gone,hamiltontwo,me,vecpotflag,0.0*staticpotdft,pot,charge);
+      lower.propagatedft(0.5*timestep,time+0.5*real(timestep),gone,hamiltontwo,me,vecpotflag,0.0*staticpotdft,pot,charge);
+
+      
+      realpot=(upper/lower).alog(gone,real(timestep));
+      //realpotclip=realpot.clip(gone);
+   /*   
+      //     Calculating exact DFT stuff without phase
+        lowerimagnophase=kohnshamorbitalnophase;
+    	kohnshamorbitalnophase=kohnshamrealdensity.phasekohnshamorbitalnull(gone,g,wf,box);
+    	
+    	 uppernophase=kohnshamorbitalnophase;
+      lowernophase=lowerimagnophase;
+      
+uppernophase.propagatedft(-0.5*timestep,time+0.5*real(timestep),gone,hamiltontwo,me,vecpotflag,0.0*staticpotdft,pot,charge);
+      lowernophase.propagatedft(0.5*timestep,time+0.5*real(timestep),gone,hamiltontwo,me,vecpotflag,0.0*staticpotdft,pot,charge);
+
+    	 realpotnophase=(uppernophase/lowernophase).alog(gone,real(timestep));
+    	realpotnophaseclip=realpotnophase.clip(gone);
+    	
+    	//    Propagation of wavefunctions in the comupted DFT potentials
+    	
+      wfdftexact.propagatedft(timestep,time+0.5*real(timestep),gone,hamiltonone,me,vecpotflag,0.0*staticpotdft,realpot,charge);
+       wfdftexactnophase.propagatedft(timestep,time+0.5*real(timestep),gone,hamiltonone,me,vecpotflag,0.0*staticpotdft,realpotnophaseclip,charge);
+    */    
+      dftapproxenerg=wfdftapprox.energydft(0.0,gone,hamiltonone,me,masses,staticpotdft,0.5*tddftpot,charge);
+      dftenerg=wfdftexact.energydft(0.0,gone,hamiltontwo,me,masses,staticpotdft,realpot,charge);
+       
+	alpha=wf.alpha1d(g);
+ 
+
+   if (counter_ii==obs_output_every)
+      	{
+	  complenerg=autowf2.energy(0.0,g,hamilton,me,masses,staticpot_x,staticpot_y,staticpot_xy,charge);
+	       dftenerg=wfdftexact.energydft(0.0,gone,hamiltontwo,me,masses,staticpotdft,realpot,charge);
+       dftapproxenerg=wfdftapprox.energydft(0.0,gone,hamiltonone,me,masses,staticpotdft,tddftpot,charge);
+	       groundstatepop=wf*wfground*g.delt_x()*g.delt_y();
+excitedstatepop=wf*wfground*g.delt_x()*g.delt_y();
+ groundstatepopdft=kohnshamorbital*wfinidft*gone.delt_x();
+
+
+	fprintf(file_ionized," %.14le  %.14le %.14le  %.14le %.14le %.14le %.14le %.14le  %.14le  %.14le\n ",(time+real(timestep)),
+wf.non_ionized(g,box),wf.sing_ionized(g,box),wf.doub_ionized(g,box),
+	kohnshamorbital.non_ionized(gone,box),kohnshamorbital.sing_ionized(gone,box),kohnshamorbital.doub_ionized(gone,box),  wfdftapprox.non_ionized(gone,box),wfdftapprox.sing_ionized(gone,box),wfdftapprox.doub_ionized(gone,box)	  
+	  	 );
+	  	  fprintf(file_obser,"  %.14le  %.14le %.14le %.14le %.14le %.14le %.14le %.14le  %.14le  %.14le  %.14le %.14le %.14le %.14le %.14le  %.14le  %.14le %.14le\n ",
+	    (time+real(timestep)),
+	    real(complenerg),
+		  imag(complenerg),
+		  wf.norm(g),
+
+  real(dftenerg),
+		  imag(dftenerg),
+ real(dftapproxenerg),
+		  imag(dftapproxenerg),
+		  wfdftexact.norm(gone),
+		  wfdftexactnophase.norm(gone),
+ kohnshamorbital.norm(gone),
+		
+		  wf.expect_x(g),
+		  wf.expect_y(g),
+		hamilton.vecpot_x(time,me),
+			  wfdftapprox.expect_x(gone),
+		  kohnshamorbital.expect_x(gone),
+		 
+		  real(conj(excitedstatepop)*excitedstatepop),
+			  
+	
+                  real(conj(groundstatepop)*groundstatepop)	  
+
+		  );
+	  
+	  counter_ii=0;
+	};
+     //      correlation=wfini*wf;
+       //   correlationint=wf.entropy(g);
+         // correlationint*=g.delt_x()*g.delt_y();  //correlation.integrator(g);
+
+
+
+
+          //      correlationex=wfexcited*wf;
+         // correlationexint=wf.entropy(g);
+         // correlationexint*=g.delt_x()*g.delt_y();//correlationex.integrator(g);
+
+ // 
+
+
+ //      correlation=wfini*wf;
+         
+
+
+
+          //      correlationex=wfexcited*wf;
+        
+
+ //correlationdftint=kohnshamorbital.entropy(gone);
+          //correlationdftint*=gone.delt_x();//correlationdftapprox.integrator(gtwo);
+
+
+
+
+          //      correlationex=wfexcited*wf;
+   //       correlationexdftint=kohnshamorbital.entropy(gone);
+         // correlationexdftint*=gone.delt_x();//correlationexdftapprox.integrator(gtwo);
+ // correlationdftapproxint=wfdftapprox.entropy(gone);
+          //correlationdftapproxint*=gone.delt_x();//correlationdftapprox.integrator(gtwo);
+
+
+
+
+          //      correlationex=wfexcited*wf;
+   //       correlationexdftapproxint=wfdftapprox.entropy(gone);
+          //correlationexdftapproxint*=gone.delt_x();//correlationexdftapprox.integrator(gtwo);
+          
+         
+for (targetenergcounter=0; targetenergcounter<nooftargetenergs; targetenergcounter++)
+	    {
+
+
+targetenergy=targetenergnull+deltatargetenergs*targetenergcounter;
+
+ for (xindex=0; xindex<g.ngps_x(); xindex++){
+ for (yindex=0; yindex<g.ngps_y(); yindex++)
+		
+{
+	
+	index=g_auto.index(xindex,yindex,targetenergcounter);
+	
+	autowf[index]=autowf[index]+(timestep*exp(imagi*time*targetenergy))*wf[g.index(xindex,yindex,0)];
+	
+	
+};
+};
+
+};
+
+for (xindex=0; xindex<g.ngps_x(); xindex++){
+ for (yindex=0; yindex<g.ngps_y(); yindex++)
+		
+{
+index2=g.index(xindex,yindex,0);
+autowf2[index2]=autowf2[index2]+(timestep*exp(imagi*time*targetenergnull))*wf[index2];
+
+};
+};
+
+
+autowf2*=1.0/sqrt(autowf2.norm(g));
+
+
+
+
+
+
+          fprintf(file_wfatgpoi,"%e %e %e %e %e %e %e %e %e %e %e %e %e %e %e \n",
+                  time,real(wf[g.index(gpKHx,gpKHy,0)]),imag(wf[g.index(gpKHx,gpKHy,0)]),
+                  real(correlationint),imag(correlationint),
+                  real(correlationexint),imag(correlationexint), real(correlationdftint),imag(correlationdftint),
+                  real(correlationexdftint),imag(correlationexdftint) , real(correlationdftapproxint),imag(correlationdftapproxint),
+                  real(correlationexdftapproxint),imag(correlationexdftapproxint)   );
+
+   
+
+      if (counter_i==wf_output_every)
+       	{
+
+	  counter_i=0;
+	  wf.dump_to_file(g,file_wfdat,dumpingstepwidth);
+ 
+	  kohnshamorbital.dump_to_file(gone,file_kohnshamorbital,dumpingstepwidth);
+	//  wfdftexact.dump_to_file(gone,file_wfdftexact,dumpingstepwidth);
+  // wfdftexactnophase.dump_to_file(gone,file_wfdftexactnophase,dumpingstepwidth);
+ 	  // floquwf.dump_to_file(g_floqu,file_floquwf,dumpingstepwidth);
+   //       KHwf.dump_to_file(g_KH,file_KHwf,dumpingstepwidth);
+	   // realpot.dump_to_file(gone,file_realpot,dumpingstepwidth);
+	     // realpotnophaseclip.dump_to_file(gone,file_realpotnophase,dumpingstepwidth);
+   tddftpotactual.dump_to_file(gone,file_tddftpot,dumpingstepwidth);
+ alphadiff.dump_to_file(gone,file_alphapart,dumpingstepwidth);
+ justalpha.dump_to_file(gone,file_justalpha,dumpingstepwidth);
+  justalphax.dump_to_file(gone,file_justalphax,dumpingstepwidth);
+ wfdftapprox.dump_to_file(gone,file_wfdftapprox,dumpingstepwidth);
+ noalphadiff.dump_to_file(gone,file_alpha,dumpingstepwidth);
+ densityapprox.dump_to_file(gone,file_densityapprox,dumpingstepwidth);
+
+ 	};
+      	
+      
+   	  
+ realpot.dump_to_file(gone,file_realpot,dumpingstepwidth);
+ // realpotnophaseclip.dump_to_file(gone,file_realpotnophase,dumpingstepwidth);
+   tddftpotactual.dump_to_file(gone,file_tddftpot,dumpingstepwidth);
+  densityapprox.dump_to_file(gone,file_densityapprox,dumpingstepwidth);
+
+
+};
+ 
+ alphadiff.dump_to_file(gone,file_alphapart,dumpingstepwidth);
+  noalphadiff.dump_to_file(gone,file_alpha,dumpingstepwidth);
+//realdftpot=autowf2.Static_KS(g);       
+   justalpha.dump_to_file(gone,file_justalpha,dumpingstepwidth);
+       justalphax.dump_to_file(gone,file_justalphax,dumpingstepwidth);  
+autowf.dump_to_file(g_auto,file_wfautodat,dumpingstepwidth);
+ //realdftpot.dump_to_file(gone,file_realdftpotdat,dumpingstepwidth);
+ autowf2.dump_to_file(g,file_wfauto2dat,dumpingstepwidth);
+ //wf.dump_to_file(g,file_wfdat,dumpingstepwidth);
+ 
+ };
+};
+  
+    
+      	
+
+    
+
+
+
+
+    fclose(file_obser);
+   
+  
+
+    fclose(file_wfdat);
+    fclose(file_wfdftexact);
+    fclose(file_realpot);
+    fclose(file_kohnshamorbital);
+    cout << me << ": Hasta la vista, ... " << endl;
+
+ 
+
+ }
+
+
+
+double vvvvecpot_x(double time, int me)
+{
+  double result=0.0;
+
+  double frequ=frequref;
+  double n=100.0;
+  double ampl=alphahat*frequ;
+  double phi=0.0;
+  double dur=n*2.0*M_PI/frequ;
+double gap=2.0*M_PI/frequ;
+ double ww=0.5*frequ/n;
+  
+
+ 
+   if ((time>0.0)  )
+    {
+	//result=-0.001;
+	// result=ampl*sin(ww*time)*sin(ww*time)*sin(frequ*time-phi);
+ };
+
+
+
+  
+      
+
+ 
+
+
+
+
+  return result;
+
+}  
+
+
+double vecpot_x(double time, int me)
+{
+
+  double result=0.0;
+
+  double frequ= frequref;
+  //double frequ2= 0.137;
+  double ramping=20.0*2*M_PI/frequ;
+  double downramp=20.0*2*M_PI/frequ;
+ 
+  double constperiod=385.0*2*M_PI/frequ;//392.0*2*M_PI/frequ;
+  double dur=ramping+constperiod+downramp;
+  double ampl = alphahat*frequ;
+ 
+ 
+	
+	
+
+  
+ 
+ 
+ /*
+ 
+  //double n= dur*frequ/(2*M_PI);
+
+//double gap=2.0*2*M_PI/frequ;
+
+if (time>0)
+{
+	result=-0.001;
+
+}
+
+*/
+
+//double ramping2=2.0*2*M_PI/frequ2;
+ // double downramp2=2.0*2*M_PI/frequ2;
+ 
+  //double constperiod2=104.0*2*M_PI/frequ2;
+//double ampl2 = 5.0*alphahat*frequ2;
+ 
+ 
+  if (time>0)
+    {
+
+      if (time<ramping){
+	result=-ampl/ramping*time*cos(frequ*time) + ampl/(frequ*ramping)*sin(frequ*time);
+	}
+      
+      if ( (time>=ramping)&&(time<ramping+constperiod))
+      {
+	result=-ampl*cos(frequ*time);//-ampl*cos(frequ2*time);
+      }
+     
+      if ( (time >= ramping+constperiod) && (time < ramping+constperiod+downramp)) 
+	{
+		  result=ampl/downramp*(time-downramp-constperiod-ramping)*cos(frequ*time)-ampl/(frequ*downramp)*sin(frequ*time);
+	}
+      
+      if ( (time >= ramping+constperiod+downramp )) //&& (time<ramping+constperiod+downramp +gap)) 
+      {
+      result=0.0;
+ }
+  };
+ /*
+ 
+   
+
+      if ((time>ramping+constperiod+downramp+gap) &&(time<ramping2+ ramping+constperiod+downramp+gap )){
+	result=-ampl2/(ramping2)*time*cos(frequ2*time) + ampl2/(frequ2*(ramping2))*sin(frequ2*time);
+	}
+      
+      if ( (time>=ramping2+ramping+constperiod+downramp+gap)&&(time<ramping2+constperiod2+ramping+constperiod+downramp+gap))
+      {
+	result=-ampl2*cos(frequ2*time);//-ampl*cos(frequ2*time);
+      }
+     
+      if ( (time >= ramping2+constperiod2+ramping+constperiod+downramp+gap) && (time < ramping2+constperiod2+downramp2+ramping+constperiod+downramp+gap)) 
+	{
+		  result=ampl2/downramp2*(time-downramp2-constperiod2-ramping2+ramping+constperiod+downramp+gap)*cos(frequ*time)-ampl2/(frequ2*downramp2)*sin(frequ2*time);
+	}
+      
+      if ( (time >= ramping2+constperiod2+downramp2+ramping+constperiod+downramp+gap ) ) 
+      {
+      result=0.0;
+ }
+ */
+
+    
+  return result;
+}  
+
+
+
+double vvvvvvecpot_x(double time, int me)
+{
+
+  double result=0.0;
+  return result;
+}  
+
+
+double alpha_y(double time, int me)
+{
+  double result=0.0;
+  double vecpotampl, frequref;
+  double ramping, constperiod, downramp;
+
+   // <-------- put same in vecpot_y !!!
+  vecpotampl = alphahat*frequref;
+
+
+  result=-vecpotampl/frequref*cos(frequref*time);
+
+  return result;
+
+}  
+
+
+double alpha_x(double time, int me)
+{
+ double result=0.0;
+  double vecpotampl, frequref;
+  double ramping, constperiod, downramp;
+
+  // <-------- put same in vecpot_y !!!
+  vecpotampl = alphahat*frequref;
+
+
+  result=-vecpotampl/frequref*cos(frequref*time);
+
+  return result;
+
+ 
+
+}  
+
+double alpha_z(double time, int me)
+{
+ 
+
+  return alpha_y(time,me);
+
+}  
+
+
+double vecpot_y(double time, int me)
+{
+ return vecpot_x(time,me);
+}  
+
+
+double vecpot_z(double time, int me)
+
+{
+
+ 
+ 
+    
+
+  return 0.0;
+ 
+ // return vecpot_x(time,me);
+}  
+
+
+
+
+
+double scalarpotx(double x, double y, double z, double time, int me)
+{
+  double eps=1.0;
+ double result;
+ 
+ double slope=0.00522;
+ double Static_field=0.0141;
+ double field_ramp=27;
+ double field_const=270;
+ result= -2.0/sqrt(x*x+eps);   //x*Static_field-2.0/sqrt(x*x+eps);
+ /*
+ if (time>0)
+    {
+		result=x*Static_field-2.0/sqrt(x*x+eps);
+
+if (time<field_ramp){
+	result=x*slope*time-2.0/sqrt(x*x+eps);
+	}
+	if ((time>=field_ramp) && (time<field_ramp+field_const))
+	{
+		result=x*Static_field-2.0/sqrt(x*x+eps);
+	}
+	if(time>=field_ramp+field_const) {
+		result= -2.0/sqrt(x*x+eps);
+	}
+	
+   //return -2.0/sqrt(x*x+eps);
+        //     return 0;
+	};
+	 double eps2=0.5034;
+     return -3.0/sqrt(x*x+eps2*eps2);
+    */
+	return result;
+}
+
+double scalarpoty(double x, double y, double z, double time, int me)
+{
+  double eps=1.0;
+    
+double result;
+ double slope=0.00522;
+ double Static_field=0.00141;
+ double field_ramp=27;
+ double field_const=270;
+ 
+ result= -2.0/sqrt(y*y+eps);   //y*Static_field-2.0/sqrt(y*y+eps);
+ /*
+ if (time>0)
+    {
+		
+
+if (time<field_ramp){
+	result=y*slope*time-2.0/sqrt(y*y+eps);
+	}
+	if ((time>=field_ramp) && (time<field_ramp+field_const))
+	{
+		result=y*Static_field-2.0/sqrt(y*y+eps);
+	}
+	if(time>=field_ramp+field_const) {
+		result= -2.0/sqrt(y*y+eps);
+	}
+	
+   //return -2.0/sqrt(x*x+eps);
+        //     return 0;
+	};
+ //return -2.0/sqrt(y*y+eps);
+      //         return 0;
+      */
+      return result;
+// double eps2=0.5034;
+  //   return -3.0/sqrt(y*y+eps2*eps2);
+    
+}
+
+double scalarpotz(double x, double y, double z, double time, int me)
+{
+double eps=1.0;
+
+ return 0.0;
+ //return -3.0/sqrt(z*z+eps);
+}
+
+double interactionpotxy(double x, double y, double z, double time, int me)
+{
+  double eps=1.0;
+  
+  return 1.0/sqrt((x-y)*(x-y)+eps);
+   
+   double eps2=0.5034;
+  
+  // return 1.0/sqrt((x-y)*(x-y)+eps2*eps2);
+   // return 0.0;
+}
+
+double interactionpotyz(double x, double y, double z, double time, int me)
+{
+  double eps=1;
+   return 0.0;  
+ //return 1.0/sqrt((z-y)*(z-y)+eps);
+ 
+}
+double interactionpotxz(double x, double y, double z, double time, int me)
+{
+  double eps=1;
+    return 0.0;  
+ //return 1.0/sqrt((x-z)*(x-z)+eps);
+ 
+}
+  
+double field(double time, int me)
+{
+  double result=0.0;
+
+
+  return result;
+
+
+}  
+
+
+
+
+
+
+
+double imagpotx(long xindex, long yindex, long zindex, double time, grid g)
+{
+  double x,y,z;
+//    double ampl=0.0; // switch imaginary potential off
+   double ampl=50.0; // switch imaginary potential on
+
+
+  if (ampl>1.0)
+    {
+      x=((double) xindex + 0.5  - 0.5*g.ngps_x())/(0.5*g.ngps_x())
+	*((double) xindex + 0.5  - 0.5*g.ngps_x())/(0.5*g.ngps_x());
+  
+      return ampl*x*x*x*x*x*x*x*x;
+    }
+  else
+    {
+       return 0.0;
+    };
+      
+}  
+
+
+double imagpoty(long xindex, long yindex, long zindex, double time, grid g)
+{
+  double y;
+//  double ampl=0.0; // switch imaginary potential off
+  
+   double ampl=50.0; // switch imaginary potential on
+
+
+  if (ampl>1.0)
+    {
+       y=((double) yindex + 0.5  - 0.5*g.ngps_y())/(0.5*g.ngps_y())
+	    *((double) yindex + 0.5  - 0.5*g.ngps_y())/(0.5*g.ngps_y());
+       return ampl*y*y*y*y*y*y*y*y;
+    }
+  else
+    {
+       return 0.0;
+    };
+      
+} 
+
+double imagpotz(long xindex, long yindex, long zindex, double time, grid g)
+{
+  double z;
+  // double ampl=0.0; // switch imaginary potential off
+   double ampl=0.0; // switch imaginary potential on
+
+
+  if (ampl>1.0)
+    {
+       z=((double) zindex + 0.5  - 0.5*g.ngps_z())/(0.5*g.ngps_z())
+	    *((double) zindex + 0.5  - 0.5*g.ngps_z())/(0.5*g.ngps_z());
+       return ampl*z*z*z*z*z*z*z*z;
+    }
+  else
+    {
+       return 0.0;
+    };
+      
+} 
+
+
+// dft is not used
+double dftpot(grid g, double x, double y, double z, double time, int me, 
+	      const fluid &v_null, const wavefunction &v_eins)
+{
+  double result;
+  result=0.0;
+  return result;
+}
+
+
+
+
+
+double scalarpotxtwo(double x, double y, double z, double time, int me)
+{
+  double eps=1.0;
+
+  return -2.0/sqrt(x*x+eps);
+         //
+          //  double eps=0.5034;
+     //return -3.0/sqrt(x*x+eps2*eps2);
+    
+           
+}
+
+double scalarpotytwo(double x, double y, double z, double time, int me)
+{
+   double result=0.0;
+  return result;
+
+}
+
+double scalarpotztwo(double x, double y, double z, double time, int me)
+{
+  double result=0.0;
+  return result;
+}
+
+double interactionpotxytwo(double x, double y, double z, double time, int me)
+{
+  double eps=1.0;
+  //  return 1.0/sqrt((x-y)*(x-y)+eps);
+  return 0.0; // attention --- no interaction !!!!!!!!!!!!!!
+}
+
+  double interactionpotyztwo(double x, double y, double z, double time, int me)
+{
+  double eps=1.0;
+  //  return 1.0/sqrt((x-y)*(x-y)+eps);
+  return 0.0; // attention --- no interaction !!!!!!!!!!!!!!
+}
+
+  double interactionpotxztwo(double x, double y, double z, double time, int me)
+{
+  double eps=1.0;
+  //  return 1.0/sqrt((x-y)*(x-y)+eps);
+  return 0.0; // attention --- no interaction !!!!!!!!!!!!!!
+}
+
+  
+
+double imagpotxtwo(long xindex, long yindex, long zindex, double time, grid g)
+{
+  double x,y,z;
+  
+    //double ampl=0.0; // switch imaginary potential off
+     double ampl=50.0; // switch imaginary potential on
+
+
+  if (ampl>1.0)
+    {
+      x=((double) xindex + 0.5  - 0.5*g.ngps_x())/(0.5*g.ngps_x())
+	*((double) xindex + 0.5  - 0.5*g.ngps_x())/(0.5*g.ngps_x());
+  
+      return ampl*x*x*x*x*x*x*x*x;
+    }
+  else
+    {
+       return 0.0;
+    };
+      
+}  
+
+
+double imagpotytwo(long xindex, long yindex, long zindex, double time, grid g)
+{
+  double y;
+    double ampl=0.0; // switch imaginary potential off
+  // double ampl=50.0; // switch imaginary potential on
+
+
+  if (ampl>1.0)
+    {
+       y=((double) yindex + 0.5  - 0.5*g.ngps_y())/(0.5*g.ngps_y())
+	    *((double) yindex + 0.5  - 0.5*g.ngps_y())/(0.5*g.ngps_y());
+       return ampl*y*y*y*y*y*y*y*y;
+    }
+  else
+    {
+       return 0.0;
+    };
+      
+} 
+
+double imagpotztwo(long xindex, long yindex, long zindex, double time, grid g)
+{
+  double z;
+    double ampl=0.0; // switch imaginary potential off
+  // double ampl=50.0; // switch imaginary potential on
+
+
+  if (ampl>1.0)
+    {
+       z=((double) zindex + 0.5  - 0.5*g.ngps_z())/(0.5*g.ngps_z())
+	    *((double) zindex + 0.5  - 0.5*g.ngps_z())/(0.5*g.ngps_z());
+       return ampl*z*z*z*z*z*z*z*z;
+    }
+  else
+    {
+       return 0.0;
+    };
+      
+} 
+double dfthartree(grid gone, double x, double y, double z, double time, int me, 
+	      const wavefunction & wf, double eps, long box)
+{
+  double result=0.0;
+  return result;
+}
+
+
